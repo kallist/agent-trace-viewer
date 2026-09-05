@@ -3,7 +3,6 @@ dist/
 coverage/
 .npm-cache/
 .git-recovery/
-agent-trace-viewer-canonical/
 .git-original-broken-backup/
 playwright-report/
 test-results/
