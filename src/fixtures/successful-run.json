@@ -1,0 +1,18 @@
+{
+  "run_id": "run_001",
+  "name": "Calculator Agent",
+  "status": "completed",
+  "started_at": "2026-09-05T10:00:00.000Z",
+  "completed_at": "2026-09-05T10:00:01.610Z",
+  "events": [
+    { "id": "event_001", "type": "run.started", "timestamp": "2026-09-05T10:00:00.000Z" },
+    { "id": "event_002", "type": "retrieval.started", "timestamp": "2026-09-05T10:00:00.012Z", "metadata": { "query": "transaction concurrency" } },
+    { "id": "event_003", "type": "retrieval.completed", "timestamp": "2026-09-05T10:00:00.098Z", "duration_ms": 86, "metadata": { "top_k": 3 } },
+    { "id": "event_004", "type": "llm.started", "timestamp": "2026-09-05T10:00:00.101Z" },
+    { "id": "event_005", "type": "llm.completed", "timestamp": "2026-09-05T10:00:01.521Z", "duration_ms": 1420, "metadata": { "model": "demo-model", "input_tokens": 1200, "output_tokens": 180 } },
+    { "id": "event_006", "type": "tool.started", "timestamp": "2026-09-05T10:00:01.524Z", "metadata": { "tool": "calculator", "input": "128 * 37 + 456" } },
+    { "id": "event_007", "type": "tool.completed", "timestamp": "2026-09-05T10:00:01.536Z", "duration_ms": 12, "metadata": { "tool": "calculator", "output": "5192" } },
+    { "id": "event_008", "type": "memory.written", "timestamp": "2026-09-05T10:00:01.540Z", "duration_ms": 31 },
+    { "id": "event_009", "type": "run.completed", "timestamp": "2026-09-05T10:00:01.610Z" }
+  ]
+}

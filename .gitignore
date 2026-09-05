@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.npm-cache/
+.git-recovery/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store

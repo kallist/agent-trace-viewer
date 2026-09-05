@@ -1,0 +1,13 @@
+{
+  "run_id": "run_failed_001",
+  "name": "Knowledge Retrieval Agent",
+  "status": "failed",
+  "started_at": "2026-09-05T11:00:00.000Z",
+  "completed_at": "2026-09-05T11:00:00.642Z",
+  "events": [
+    { "id": "failed_001", "type": "run.started", "timestamp": "2026-09-05T11:00:00.000Z" },
+    { "id": "failed_002", "type": "retrieval.started", "timestamp": "2026-09-05T11:00:00.012Z", "metadata": { "query": "durable memory" } },
+    { "id": "failed_003", "type": "retrieval.failed", "timestamp": "2026-09-05T11:00:00.642Z", "metadata": { "error": "VectorStoreUnavailable", "message": "Vector store unavailable" } },
+    { "id": "failed_004", "type": "run.failed", "timestamp": "2026-09-05T11:00:00.642Z", "metadata": { "error": "RetrievalFailed", "message": "The retrieval stage failed." } }
+  ]
+}
