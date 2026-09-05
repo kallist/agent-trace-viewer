@@ -10,11 +10,18 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4173",
     trace: "retain-on-failure",
   },
-  webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 4173",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: "node e2e/fixtures/sse-server.mjs",
+      url: "http://127.0.0.1:4174/health",
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "npm run dev -- --host 127.0.0.1 --port 4173",
+      url: "http://127.0.0.1:4173",
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
   projects: [
     {
       name: "chromium",
