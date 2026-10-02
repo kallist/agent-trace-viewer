@@ -13,10 +13,10 @@ function MetricCard({ label, value, detail, accent = "blue" }: MetricCardProps) 
   return <div className={`metric-card accent-${accent}`}><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</div>;
 }
 
-export default function TraceMetrics({ metrics }: { metrics: Metrics }) {
+export default function TraceMetrics({ metrics, heading = "Run metrics" }: { metrics: Metrics; heading?: string }) {
   return (
     <section className="metrics-section" aria-labelledby="metrics-heading">
-      <div className="section-heading compact"><div><p className="eyebrow">At a glance</p><h2 id="metrics-heading">Run metrics</h2></div></div>
+      <div className="section-heading compact"><div><p className="eyebrow">At a glance</p><h2 id="metrics-heading">{heading}</h2></div></div>
       <div className="metrics-grid primary-metrics">
         <MetricCard label="Total duration" value={formatDuration(metrics.totalDurationMs)} accent="violet" />
         <MetricCard label="LLM" value={formatDuration(metrics.llmDurationMs)} detail={`${metrics.llmCalls} ${metrics.llmCalls === 1 ? "call" : "calls"}`} accent="purple" />

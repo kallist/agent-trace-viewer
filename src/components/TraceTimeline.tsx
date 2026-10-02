@@ -5,6 +5,7 @@ import type { NormalizedTrace, TraceEvent } from "../trace/types";
 interface TraceTimelineProps {
   trace: NormalizedTrace;
   selectedEventId: string | null;
+  currentEventId?: string | null;
   onSelect: (event: TraceEvent) => void;
 }
 
@@ -19,7 +20,7 @@ function eventPosition(event: TraceEvent, trace: NormalizedTrace): { left: strin
   return { left: `${left}%`, width: `${width}%`, marker };
 }
 
-export default function TraceTimeline({ trace, selectedEventId, onSelect }: TraceTimelineProps) {
+export default function TraceTimeline({ trace, selectedEventId, currentEventId, onSelect }: TraceTimelineProps) {
   return (
     <section className="timeline-panel panel" aria-labelledby="timeline-heading">
       <div className="section-heading timeline-heading"><div><p className="eyebrow">Ordered by timestamp</p><h2 id="timeline-heading">Event timeline</h2></div><span className="muted-caption">{trace.events.length} events</span></div>
@@ -29,7 +30,7 @@ export default function TraceTimeline({ trace, selectedEventId, onSelect }: Trac
           return <button
             type="button"
             key={event.id}
-            className={`timeline-event ${event.status === "failed" ? "is-failed" : ""} ${selectedEventId === event.id ? "is-selected" : ""}`}
+            className={`timeline-event ${event.status === "failed" ? "is-failed" : ""} ${selectedEventId === event.id ? "is-selected" : ""} ${currentEventId === event.id ? "is-current" : ""}`}
             onClick={() => onSelect(event)}
             aria-pressed={selectedEventId === event.id}
             aria-label={`${event.type}, ${titleCase(event.status)}, ${formatDuration(event.durationMs)}`}
