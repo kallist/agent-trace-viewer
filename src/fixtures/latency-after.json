@@ -1,0 +1,14 @@
+{
+  "run_id": "demo_after_001",
+  "name": "After Optimization",
+  "status": "completed",
+  "started_at": "2026-10-01T12:00:00.000Z",
+  "completed_at": "2026-10-01T12:00:02.450Z",
+  "events": [
+    { "id": "after-start", "type": "run.started", "timestamp": "2026-10-01T12:00:00.000Z" },
+    { "id": "after-retrieval", "type": "retrieval.completed", "timestamp": "2026-10-01T12:00:00.650Z", "duration_ms": 450 },
+    { "id": "after-llm", "type": "llm.completed", "timestamp": "2026-10-01T12:00:02.250Z", "duration_ms": 1800, "metadata": { "input_tokens": 980, "output_tokens": 196 } },
+    { "id": "after-tool", "type": "tool.completed", "timestamp": "2026-10-01T12:00:02.400Z", "duration_ms": 200, "metadata": { "tool": "calculator" } },
+    { "id": "after-end", "type": "run.completed", "timestamp": "2026-10-01T12:00:02.450Z" }
+  ]
+}

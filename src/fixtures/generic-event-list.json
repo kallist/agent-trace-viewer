@@ -1,0 +1,7 @@
+{
+  "events": [
+    { "type": "run.started", "timestamp": "2026-10-01T13:00:00.000Z", "label": "Begin" },
+    { "type": "tool.completed", "timestamp": "2026-10-01T13:00:00.120Z", "duration_ms": 120, "tool": "generic.lookup", "output": "found" },
+    { "type": "run.completed", "timestamp": "2026-10-01T13:00:00.180Z" }
+  ]
+}

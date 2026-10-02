@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - feat/agent-trace-viewer-v0.2-live
 
 permissions:
   contents: read

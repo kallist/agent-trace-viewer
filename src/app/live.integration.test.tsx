@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import type { LiveTraceHandlers, LiveTraceTransport } from "../trace/live/transport";
@@ -87,6 +87,30 @@ describe("live trace product integration", () => {
     act(() => oldHandlers?.onMessage(toolMessage("stale")));
     expect(screen.getByText("run_failed_001")).toBeTruthy();
     expect(screen.queryByText("fake-live")).toBeNull();
+  });
+
+  it("ignores a delayed offline file read after switching to and selecting a live event", async () => {
+    const user = userEvent.setup();
+    const transport = new FakeTransport();
+    render(<App liveTransport={transport} />);
+    let resolveRead: (value: string) => void = () => undefined;
+    const delayedText = new Promise<string>((resolve) => { resolveRead = resolve; });
+    const delayedFile = new File(["pending"], "delayed.json", { type: "application/json" });
+    Object.defineProperty(delayedFile, "text", { configurable: true, value: () => delayedText });
+    await user.upload(screen.getByLabelText("Upload .json"), delayedFile);
+    await user.click(screen.getByRole("button", { name: "Live" }));
+    await user.click(screen.getByRole("button", { name: "Connect" }));
+    transport.open();
+    transport.emit(startMessage());
+    transport.emit(toolMessage());
+    await user.click(screen.getByRole("button", { name: /tool\.completed/i }));
+    expect(screen.getByRole("heading", { name: "tool.completed" })).toBeTruthy();
+
+    resolveRead(JSON.stringify({ run_id: "stale-offline", events: [{ type: "run.completed", timestamp: "2026-01-01T00:00:00Z" }] }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "tool.completed" })).toBeTruthy());
+    expect(screen.getByText("fake-live")).toBeTruthy();
+    expect(screen.queryByText("stale-offline")).toBeNull();
+    expect(screen.getByRole("status", { name: /LIVE/i })).toBeTruthy();
   });
 
   it("rejects a credential-bearing endpoint without opening transport", async () => {

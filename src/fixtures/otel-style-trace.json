@@ -1,0 +1,13 @@
+{
+  "resourceSpans": [
+    {
+      "resource": { "attributes": [{ "key": "service.name", "value": { "stringValue": "demo-agent" } }] },
+      "scopeSpans": [{
+        "spans": [
+          { "traceId": "otel_demo_001", "spanId": "span_retrieval", "name": "retrieval.search", "startTimeUnixNano": "1790859600000000000", "endTimeUnixNano": "1790859600180000000", "attributes": [{ "key": "db.system", "value": { "stringValue": "vector-demo" } }] },
+          { "traceId": "otel_demo_001", "spanId": "span_llm", "name": "llm.generate", "startTimeUnixNano": "1790859600200000000", "endTimeUnixNano": "1790859600950000000", "attributes": [{ "key": "gen_ai.request.model", "value": { "stringValue": "demo-model" } }, { "key": "gen_ai.usage.output_tokens", "value": { "intValue": 72 } }] }
+        ]
+      }]
+    }
+  ]
+}

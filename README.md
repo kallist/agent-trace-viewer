@@ -1,26 +1,38 @@
-# Agent Trace Viewer V0.2
+# Agent Trace Viewer
 
-Agent Trace Viewer is a small, local-first browser tool for inspecting AI agent execution traces. It parses, normalizes, analyzes, and visualizes a trace; it does not execute agents or upload trace data.
+Agent Trace Viewer is a local-first observability workbench for replaying, comparing, and diagnosing AI agent traces.
+
+Agent runs are difficult to understand from raw logs. This browser tool turns an imported trace or an explicitly selected live SSE stream into a normalized timeline, replayable run, factual comparison, and evidence-based latency observations. It does not execute agents or upload imported traces.
 
 ## Features
 
-- Load successful and failed demo traces.
-- Paste or upload a JSON trace (up to 5 MB).
-- View run summary, duration and token metrics, a timestamp-ordered timeline, event metadata, raw JSON, and failure signals.
-- Keep the last valid trace visible when a new import is malformed.
-- Classify common `run`, `llm`, `retrieval`/`rag`/`vector`, `tool`, and `memory` events; unknown types remain visible as `other`.
-- Connect to a user-provided HTTP or HTTPS SSE endpoint and inspect one live run incrementally.
-- Reuse the offline normalized trace, metrics, timeline, inspector, and failure summary while a stream is live.
-- Surface connection lifecycle, malformed-message warnings, duplicate suppression, and stale-connection protection.
+- **Observe:** inspect normalized events, metrics, failures, metadata, and raw JSON.
+- **Live SSE:** connect to one user-provided HTTP/HTTPS endpoint and inspect a run as it arrives.
+- **Replay Theater:** seek, step through timestamp boundaries, pause, and play at 0.5×, 1×, 2×, or 4×. Replay advances a virtual clock; it never reruns an agent.
+- **Run Compare:** compare two completed traces and show measured duration, stage, call, failure, and token deltas. Deltas are Run B − Run A and do not choose a winner.
+- **Bottleneck Lens:** deterministic observations about measured stage latency and event evidence. This is a heuristic, not an AI diagnosis or confirmed root cause.
+- **Adapter Registry:** import Native Trace, Generic Event List, and a documented OTel-style JSON subset.
+- **Demo Scenarios:** load a RAG workflow, a tool failure with fallback, or a latency-heavy run. The latency pair is also available in Compare.
 
-## Quick start
+## 60-second Demo
+
+1. In **Observe**, choose **Load scenario** under **RAG Agent**.
+2. Open **Replay**, press **Play**, or seek to the tool event and inspect its input and output.
+3. Use **Step backward/forward** and change playback speed.
+4. Open **Compare** and review **Before Optimization** versus **After Optimization**.
+5. Return to **Observe**, load **Latency Heavy Run**, and inspect the measured evidence in **Bottleneck Lens**.
+6. Optionally upload `src/fixtures/generic-event-list.json` or `src/fixtures/otel-style-trace.json` to see adapter detection.
+
+## Quick Start
+
+Requires a Node.js version supported by the project dependencies (Node 22 or 24+).
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. Production verification uses:
+Open the local URL printed by Vite. Quality checks:
 
 ```bash
 npm run lint
@@ -30,62 +42,93 @@ npm run build
 npm run e2e
 ```
 
-## Supported trace format
+## Trace Model
 
-The required root field is `events`, an array of event objects. Each event requires `type` and a valid `timestamp`. `id`, `metadata`, `duration_ms`, `run_id`, `name`, `status`, `started_at`, and `completed_at` are supported optional fields. Unknown root and event fields are preserved in the raw JSON view.
+The application works with one `NormalizedTrace`: run identity and status, start/completion times, total duration, timestamp-ordered events, event categories and statuses, optional measured durations, metadata, and preserved raw input. Adapters convert supported input shapes into this model. Replay frames, comparisons, metrics, the timeline, the inspector, and the Lens all derive from it.
 
-```json
-{
-  "run_id": "run_001",
-  "name": "Calculator Agent",
-  "status": "completed",
-  "started_at": "2026-09-05T10:00:00.000Z",
-  "completed_at": "2026-09-05T10:00:01.610Z",
-  "events": [
-    { "type": "run.started", "timestamp": "2026-09-05T10:00:00.000Z" },
-    {
-      "type": "tool.completed",
-      "timestamp": "2026-09-05T10:00:01.536Z",
-      "duration_ms": 12,
-      "metadata": { "tool": "calculator", "output": "5192" }
-    }
-  ]
-}
+The Native Trace format uses an `events` array. Each event requires a non-empty `type` and valid `timestamp`; optional fields include `id`, `duration_ms`, and object `metadata`. Run fields such as `run_id`, `name`, `status`, `started_at`, and `completed_at` are optional. If an events-only document contains only Native Trace event fields, it is classified as Native; generic extra event fields such as top-level `tool` or `output` select Generic Event List. The parser preserves unknown fields in raw JSON and reports malformed inputs as structured validation errors.
+
+## Live SSE Protocol
+
+Live mode accepts one `trace.start`, zero or more `trace.event`, then `trace.end` messages. Each message identifies a `run_id`; `trace.event` carries one Native Trace event. Malformed or mismatched messages are isolated and reported. Disconnect, clear, mode changes, and unmount invalidate stale callbacks. The browser EventSource transport accepts credential-free HTTP/HTTPS endpoint URLs and sets `withCredentials: false`.
+
+Cross-origin endpoints must allow browser CORS. EventSource may still send browser-managed same-origin cookies. There is no login, API-key field, custom authorization header, or authentication implementation.
+
+## Replay
+
+Replay derives `visibleEvents` from `event.elapsedMs <= cursorMs`, then builds a partial normalized trace and reuses the existing metrics, timeline, and inspector. Identical trace and cursor inputs produce the same frame. Play uses a virtual cursor advanced by animation-frame deltas; speed changes affect the cursor rate. Seek clamps to the run bounds, and stepping moves between unique event-time boundaries. Selecting an event and seeking it out of view clears the selection. Replaying an ended trace restarts from zero.
+
+## Compare
+
+Compare accepts completed or failed normalized runs. The current trace appears as an option only after it is terminal; an active Live trace is excluded. Stage durations, counts, failures, and available token totals are computed in the domain layer. Numeric deltas are `B − A`; the percentage uses A as its baseline. When A is zero and B is non-zero, the percentage is unavailable and shown as `—` rather than `NaN` or infinity. Missing token measurements remain unavailable rather than being invented as zero.
+
+## Bottleneck Lens
+
+The Lens reports observed facts only:
+
+- Largest measured latency category when a category accounts for at least 60% of measured stage duration.
+- Slowest event with a duration measurement.
+- Repeated tool names observed at least three times.
+- Failed-event counts and retrieval share when retrieval is at least 40% of measured stage duration.
+- Events without duration measurements.
+
+Thresholds live in `src/trace/analysis/bottlenecks.ts`. Missing durations are excluded from measured totals, never treated as zero. Findings do not claim root cause or recommend an unverified fix.
+
+## Adapters
+
+| Adapter | Accepted input | Notes |
+|---|---|---|
+| Native Trace | Agent Trace Viewer `events` schema | Uses the existing parser and validation. |
+| Generic Event List | `{ "events": [{ "type": "...", "timestamp": "..." }] }` | Additional event fields become metadata. |
+| OTel-style JSON subset | `spans[]` or `resourceSpans[].scopeSpans[].spans[]` | Reads span name/IDs, scalar attributes, start/end times, and error status for one trace. |
+
+OTel-style JSON import is not full OTLP support and does not include an OpenTelemetry Collector or SDK. Multiple trace IDs in one import are rejected rather than combined.
+
+### Build an Adapter
+
+An adapter recognizes a data shape and returns the shared parser's result. Conversion works on JSON data only; it never executes payload content.
+
+```ts
+import { parseTraceValue } from "../parser";
+import type { TraceAdapter } from "./types";
+
+export const agentStudioAdapter: TraceAdapter = {
+  id: "agent-studio",
+  name: "Agent Studio Trace",
+  priority: 15,
+  canHandle(input) {
+    return typeof input === "object" && input !== null && "agent_events" in input;
+  },
+  convert(input) {
+    if (typeof input !== "object" || input === null) return parseTraceValue(input);
+    const source = input as { agent_events?: unknown[]; run_id?: string };
+    const events = (source.agent_events ?? []).filter(
+      (event): event is Record<string, unknown> => typeof event === "object" && event !== null && !Array.isArray(event),
+    );
+    return parseTraceValue({ run_id: source.run_id, events });
+  },
+};
 ```
 
-Invalid timestamps and missing event types are validation errors. Missing IDs receive deterministic local IDs, duplicate IDs are renamed, invalid optional durations are ignored with a warning, and events are sorted by timestamp. When an explicit duration is absent, only an obvious same-operation `started` → `completed`/`failed` pair is used.
+Register a new adapter in `src/trace/adapters/registry.ts` with an explicit priority and add conversion and detection tests. Future formats can follow this boundary without changing downstream trace views.
 
-## Live Trace
+## Security and Privacy
 
-Open **Live**, enter an SSE endpoint, and choose **Connect**. The browser supports this small V0.2 protocol:
-
-```text
-trace.start -> trace.event* -> trace.end
-```
-
-Each `trace.start` and `trace.end` message contains a `run_id`. Each `trace.event` message contains a `run_id` and one event in the offline trace format. A connection is bound to one run; malformed messages, mismatched run IDs, and duplicate SSE/event IDs are dropped with a visible warning. EventSource may reconnect after a network error, but **Disconnect**, **Clear**, and switching back to Offline invalidate old callbacks.
-
-The browser only accepts `http:` and `https:` endpoints. URL credentials, authentication headers, API keys, telemetry, and trace persistence are not supported. The endpoint must allow CORS when it is on another origin.
-
-The repository includes a deterministic test-only SSE fixture server for browser tests. It is not started by the production build and is not a production backend.
-
-EventSource carries the last SSE ID forward when a later message omits `id:`. Transport deduplication therefore compares the ID and parsed message together; an identical replay is dropped, while a distinct message with an inherited ID is processed. Event IDs provide additional deduplication. If both IDs are absent, reliable deduplication is unavailable. Keep IDs stable and unique at the endpoint. A terminal EventSource error (for example, HTTP 404) shows Disconnected instead of waiting for a retry that will not occur.
-
-Live traces and deduplication identities remain in tab memory until cleared or replaced. The viewer rebuilds normalization and metrics per event; unbounded streams and large traces are outside V0.2's tested limits. Stream warnings are capped at eight.
-
-`withCredentials: false` disables cross-origin credential inclusion. Native EventSource can still send browser-managed same-origin cookies; V0.2 provides no login flow or credential controls.
+- Imported trace data, adapter attributes, and raw payloads remain in browser memory and are rendered as text.
+- There is no backend, database, cloud upload, analytics, telemetry, or remote logging.
+- Live mode opens only the endpoint the user enters; the viewer does not upload the trace elsewhere.
+- URL credentials and non-HTTP protocols are rejected. No arbitrary-code evaluation or unsafe HTML rendering is used.
 
 ## Architecture
 
-```text
-Offline JSON -> parser / validation -> normalized trace model -> metrics -> React UI
-SSE -> transport -> live protocol parser -> live accumulator -> normalized trace model -> existing metrics / timeline / inspector
-```
+See [docs/architecture.md](docs/architecture.md) for boundaries and data flow.
 
-The domain code in `src/trace` does not depend on React. Metrics are pure functions. The timeline is HTML and CSS, with no charting dependency. There is no backend, database, telemetry, analytics, or persistence layer; live mode only opens the user-selected SSE connection.
+## Testing
 
-## Privacy and limitations
+Vitest covers parser compatibility, Live lifecycle, adapters, deterministic replay frames, comparison math, heuristic boundaries, and UI integration. Playwright covers offline and Live flows plus Replay, Compare, the Lens, Generic/OTel-style imports, and stale-import protection. Hosted CI runs dependency installation, lint, typecheck, tests, build, and Chromium E2E.
 
-Agent Trace Viewer processes imported traces locally in the browser. Live mode sends no trace data from the viewer; it only reads the endpoint selected by the user. JSON and event metadata are displayed as text produced by `JSON.stringify`; imported strings are never evaluated as code.
+## Limitations and Roadmap
 
-V0.2 does not support WebSocket, OpenTelemetry/OTLP, external provider adapters, authentication, cloud persistence, trace history, multi-run multiplexing, distributed traces, or agent execution.
+Imports are limited to 5 MB. The OTel-style adapter supports the subset documented above, not full OTLP. Large/unbounded Live streams and traces at extreme scale have not been performance-certified. Refreshing the browser tab clears in-memory traces and compare state.
+
+Future work, if separately approved, could add more framework adapters, expand the supported OTel JSON subset, or offer optional local persistence. This release does not include those capabilities.
