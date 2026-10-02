@@ -1,0 +1,17 @@
+{
+  "run_id": "demo_rag_001",
+  "name": "RAG Answer Workflow",
+  "status": "completed",
+  "started_at": "2026-10-01T09:00:00.000Z",
+  "completed_at": "2026-10-01T09:00:02.120Z",
+  "events": [
+    { "id": "rag-start", "type": "run.started", "timestamp": "2026-10-01T09:00:00.000Z" },
+    { "id": "rag-retrieval-start", "type": "retrieval.started", "timestamp": "2026-10-01T09:00:00.040Z", "metadata": { "query": "refund policy" } },
+    { "id": "rag-retrieval", "type": "retrieval.completed", "timestamp": "2026-10-01T09:00:00.340Z", "duration_ms": 300, "metadata": { "documents": 3 } },
+    { "id": "rag-llm-start", "type": "llm.started", "timestamp": "2026-10-01T09:00:00.360Z", "metadata": { "model": "demo-model" } },
+    { "id": "rag-llm", "type": "llm.completed", "timestamp": "2026-10-01T09:00:01.660Z", "duration_ms": 1300, "metadata": { "input_tokens": 760, "output_tokens": 128 } },
+    { "id": "rag-tool-start", "type": "tool.started", "timestamp": "2026-10-01T09:00:01.700Z", "metadata": { "tool": "policy.lookup", "input": "refund window" } },
+    { "id": "rag-tool", "type": "tool.completed", "timestamp": "2026-10-01T09:00:01.910Z", "duration_ms": 210, "metadata": { "tool": "policy.lookup", "output": "30 days" } },
+    { "id": "rag-end", "type": "run.completed", "timestamp": "2026-10-01T09:00:02.120Z" }
+  ]
+}

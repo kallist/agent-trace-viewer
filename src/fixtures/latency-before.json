@@ -1,0 +1,14 @@
+{
+  "run_id": "demo_before_001",
+  "name": "Before Optimization",
+  "status": "completed",
+  "started_at": "2026-10-01T11:00:00.000Z",
+  "completed_at": "2026-10-01T11:00:03.200Z",
+  "events": [
+    { "id": "before-start", "type": "run.started", "timestamp": "2026-10-01T11:00:00.000Z" },
+    { "id": "before-retrieval", "type": "retrieval.completed", "timestamp": "2026-10-01T11:00:00.900Z", "duration_ms": 700 },
+    { "id": "before-llm", "type": "llm.completed", "timestamp": "2026-10-01T11:00:02.900Z", "duration_ms": 2200, "metadata": { "input_tokens": 1200, "output_tokens": 240 } },
+    { "id": "before-tool", "type": "tool.completed", "timestamp": "2026-10-01T11:00:03.150Z", "duration_ms": 300, "metadata": { "tool": "calculator" } },
+    { "id": "before-end", "type": "run.completed", "timestamp": "2026-10-01T11:00:03.200Z" }
+  ]
+}

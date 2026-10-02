@@ -1,0 +1,16 @@
+{
+  "run_id": "demo_recovery_001",
+  "name": "Tool Failure and Recovery",
+  "status": "completed",
+  "started_at": "2026-10-01T10:00:00.000Z",
+  "completed_at": "2026-10-01T10:00:01.800Z",
+  "events": [
+    { "id": "rec-start", "type": "run.started", "timestamp": "2026-10-01T10:00:00.000Z" },
+    { "id": "rec-tool-start", "type": "tool.started", "timestamp": "2026-10-01T10:00:00.050Z", "metadata": { "tool": "primary.search" } },
+    { "id": "rec-tool-fail", "type": "tool.failed", "timestamp": "2026-10-01T10:00:00.350Z", "duration_ms": 300, "metadata": { "tool": "primary.search", "error": "ServiceUnavailable" } },
+    { "id": "rec-fallback-start", "type": "tool.started", "timestamp": "2026-10-01T10:00:00.420Z", "metadata": { "tool": "backup.search" } },
+    { "id": "rec-fallback", "type": "tool.completed", "timestamp": "2026-10-01T10:00:00.720Z", "duration_ms": 300, "metadata": { "tool": "backup.search", "output": "3 documents" } },
+    { "id": "rec-llm", "type": "llm.completed", "timestamp": "2026-10-01T10:00:01.650Z", "duration_ms": 900, "metadata": { "output_tokens": 96 } },
+    { "id": "rec-end", "type": "run.completed", "timestamp": "2026-10-01T10:00:01.800Z" }
+  ]
+}
