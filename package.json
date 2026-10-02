@@ -1,14 +1,14 @@
 {
   "name": "agent-trace-viewer",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "node node_modules/vite/bin/vite.js",
-    "build": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/vite/bin/vite.js build",
+    "build": "npm run typecheck && node node_modules/vite/bin/vite.js build",
     "preview": "node node_modules/vite/bin/vite.js preview",
     "lint": "node node_modules/eslint/bin/eslint.js .",
-    "typecheck": "node node_modules/typescript/bin/tsc --noEmit --pretty false",
+    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit --pretty false && node node_modules/typescript/bin/tsc -p tsconfig.node.json --noEmit --pretty false",
     "test": "node node_modules/vitest/vitest.mjs run --configLoader runner --pool=threads --no-file-parallelism",
     "test:watch": "node node_modules/vitest/vitest.mjs",
     "e2e": "node node_modules/@playwright/test/cli.js test"
