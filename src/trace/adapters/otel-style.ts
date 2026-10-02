@@ -113,7 +113,7 @@ export const otelStyleJsonAdapter: TraceAdapter = {
     const result = parseTraceValue({
       run_id: traceIds.length === 1 ? traceIds[0] : "otel-style-run",
       name: typeof input.name === "string" ? input.name : "OTel-style trace",
-      status: events.some((event) => event.type.endsWith(".failed")) ? "failed" : "completed",
+      status: input.status,
       ...(starts.length > 0 ? { started_at: new Date(Math.min(...starts)).toISOString(), completed_at: new Date(Math.max(...ends)).toISOString() } : {}),
       events,
     });

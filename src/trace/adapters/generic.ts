@@ -8,7 +8,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export const genericEventListAdapter: TraceAdapter = {
   id: "generic-event-list",
   name: "Generic Event List",
-  priority: 20,
+  priority: 30,
   canHandle(input) {
     return isRecord(input) && Array.isArray(input.events) && !["run_id", "name", "status", "started_at", "completed_at"].some((key) => key in input);
   },
@@ -16,7 +16,7 @@ export const genericEventListAdapter: TraceAdapter = {
     if (!isRecord(input) || !Array.isArray(input.events)) return parseTraceValue(input);
     const events = input.events.map((event) => {
       if (!isRecord(event)) return event;
-      const metadata = isRecord(event.metadata) ? { ...event.metadata } : {};
+      const metadata: Record<string, unknown> = Object.assign(Object.create(null), isRecord(event.metadata) ? event.metadata : {});
       for (const [key, value] of Object.entries(event)) {
         if (!["id", "type", "timestamp", "duration_ms", "metadata"].includes(key)) metadata[key] = value;
       }

@@ -159,6 +159,16 @@ test("Replay Theater seeks and steps the existing timeline without rerunning the
   await expect(page.locator(".timeline-event")).toHaveCount(8);
 });
 
+test("Replay Play advances the virtual cursor to the end of the run", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Replay", exact: true }).click();
+  await page.getByLabel("Replay speed").selectOption("4");
+  await page.getByRole("button", { name: "Play replay" }).click();
+  await expect(page.getByRole("status", { name: "Replay ENDED", exact: true })).toBeVisible({ timeout: 5_000 });
+  const slider = page.getByRole("slider", { name: "Replay position" });
+  await expect(slider).toHaveJSProperty("value", await slider.getAttribute("max"));
+});
+
 test("Run Compare renders the measured demo-pair deltas", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Compare", exact: true }).click();
