@@ -69,6 +69,12 @@ The browser only accepts `http:` and `https:` endpoints. URL credentials, authen
 
 The repository includes a deterministic test-only SSE fixture server for browser tests. It is not started by the production build and is not a production backend.
 
+EventSource carries the last SSE ID forward when a later message omits `id:`. Transport deduplication therefore compares the ID and parsed message together; an identical replay is dropped, while a distinct message with an inherited ID is processed. Event IDs provide additional deduplication. If both IDs are absent, reliable deduplication is unavailable. Keep IDs stable and unique at the endpoint. A terminal EventSource error (for example, HTTP 404) shows Disconnected instead of waiting for a retry that will not occur.
+
+Live traces and deduplication identities remain in tab memory until cleared or replaced. The viewer rebuilds normalization and metrics per event; unbounded streams and large traces are outside V0.2's tested limits. Stream warnings are capped at eight.
+
+`withCredentials: false` disables cross-origin credential inclusion. Native EventSource can still send browser-managed same-origin cookies; V0.2 provides no login flow or credential controls.
+
 ## Architecture
 
 ```text

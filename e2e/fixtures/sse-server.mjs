@@ -32,14 +32,24 @@ const malformedEvents = [
 const duplicateEvents = [
   successEvents[0],
   event("trace.event", "2", { run_id: "run_live_001", event: { id: "duplicate-event", type: "tool.completed", timestamp: "2026-09-06T10:00:00.100Z", duration_ms: 12, metadata: { tool: "calculator", output: "5192" } } }),
+  event("trace.event", "2", { run_id: "run_live_001", event: { id: "duplicate-event", type: "tool.completed", timestamp: "2026-09-06T10:00:00.100Z", duration_ms: 12, metadata: { tool: "calculator", output: "5192" } } }),
   event("trace.event", "3", { run_id: "run_live_001", event: { id: "duplicate-event", type: "tool.completed", timestamp: "2026-09-06T10:00:00.100Z", duration_ms: 12, metadata: { tool: "calculator", output: "5192" } } }),
   event("trace.end", "4", { run_id: "run_live_001", status: "completed", completed_at: "2026-09-06T10:00:00.100Z" }),
 ];
 
 const slowEvents = [successEvents[0], successEvents[1], ...successEvents.slice(2)];
+const inheritedIdEvents = [
+  successEvents[0],
+  { ...successEvents[7], id: undefined },
+  { ...successEvents[10], id: undefined },
+];
+// Browser tests advance controlled streams only after asserting the current UI.
+// Default fixture endpoints keep their timed local-development behavior.
+const controlledStreams = new Map();
 
 function writeEvent(response, item) {
-  response.write(`id: ${item.id}\nevent: ${item.eventType}\ndata: ${item.data}\n\n`);
+  const idLine = item.id === undefined ? "" : `id: ${item.id}\n`;
+  response.write(`${idLine}event: ${item.eventType}\ndata: ${item.data}\n\n`);
 }
 
 function stream(response, items, delay) {
@@ -72,14 +82,50 @@ const server = http.createServer((request, response) => {
     response.end("ok");
     return;
   }
-  const path = new URL(request.url, `http://${request.headers.host}`).pathname;
-  const items = path === "/sse/malformed" ? malformedEvents : path === "/sse/duplicate" ? duplicateEvents : path === "/sse/slow" ? slowEvents : path === "/sse/success" ? successEvents : null;
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const path = url.pathname;
+  if (path.startsWith("/control/")) {
+    const key = path.slice("/control/".length);
+    const controlled = controlledStreams.get(key);
+    if (!controlled) {
+      response.writeHead(404);
+      response.end("stream not connected");
+      return;
+    }
+    if (request.method === "POST") {
+      const remaining = controlled.items.length - controlled.index;
+      const count = Math.min(Number(url.searchParams.get("count") ?? 1), remaining);
+      if (!Number.isInteger(count) || count < 0) {
+        response.writeHead(400);
+        response.end("invalid advance count");
+        return;
+      }
+      for (let index = 0; index < count; index += 1) {
+        const item = controlled.items[controlled.index];
+        controlled.index += 1;
+        if (!controlled.closed) writeEvent(controlled.response, item);
+      }
+      if (controlled.index === controlled.items.length && !controlled.closed) controlled.response.end();
+    }
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ attempted: controlled.index, total: controlled.items.length, closed: controlled.closed }));
+    return;
+  }
+  const items = path === "/sse/malformed" ? malformedEvents : path === "/sse/duplicate" ? duplicateEvents : path === "/sse/slow" ? slowEvents : path === "/sse/inherited-id" ? inheritedIdEvents : path === "/sse/success" ? successEvents : null;
   if (!items) {
     response.writeHead(404);
     response.end("not found");
     return;
   }
   response.writeHead(200, { "Cache-Control": "no-cache", Connection: "keep-alive", "Content-Type": "text/event-stream" });
+  const control = url.searchParams.get("control");
+  if (control) {
+    const controlled = { response, items, index: 0, closed: false };
+    controlledStreams.set(control, controlled);
+    response.flushHeaders();
+    response.on("close", () => { controlled.closed = true; });
+    return;
+  }
   stream(response, items, path === "/sse/slow" ? 350 : 30);
 });
 

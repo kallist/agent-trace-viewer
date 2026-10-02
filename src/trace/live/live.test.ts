@@ -63,7 +63,7 @@ describe("live trace accumulator", () => {
   it("drops duplicate transport and event IDs without double-counting", () => {
     let session = reduceLiveTraceSession(createLiveTraceSession(), parse(start));
     session = reduceLiveTraceSession(session, parse(event("same-event", "2026-09-06T10:00:00.100Z", "2")));
-    session = reduceLiveTraceSession(session, parse(event("different-event", "2026-09-06T10:00:00.110Z", "2")));
+    session = reduceLiveTraceSession(session, parse(event("same-event", "2026-09-06T10:00:00.100Z", "2")));
     session = reduceLiveTraceSession(session, parse(event("same-event", "2026-09-06T10:00:00.100Z", "3")));
     expect(session.trace?.events).toHaveLength(1);
     expect(session.droppedMessages).toBe(2);
@@ -88,6 +88,15 @@ describe("live trace accumulator", () => {
     }
     expect(session.warnings).toHaveLength(MAX_LIVE_WARNINGS);
     expect(session.droppedMessages).toBe(MAX_LIVE_WARNINGS + 3);
+  });
+
+  it("retains unique events and closes the run when EventSource inherits an earlier SSE ID", () => {
+    let session = reduceLiveTraceSession(createLiveTraceSession(), parse(start));
+    session = reduceLiveTraceSession(session, parse(event("unique", "2026-09-06T10:00:00.100Z", "1")));
+    session = reduceLiveTraceSession(session, parse({ eventType: "trace.end", transportId: "1", data: JSON.stringify({ run_id: "run-live", status: "completed" }) }));
+    expect(session.trace?.events.map((item) => item.id)).toEqual(["unique"]);
+    expect(session.phase).toBe("ended");
+    expect(session.droppedMessages).toBe(0);
   });
 });
 

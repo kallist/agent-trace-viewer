@@ -145,7 +145,7 @@ export default function App({ liveTransport }: AppProps) {
         <TraceSummary trace={trace} />
         <TraceMetrics metrics={metrics} />
         <div className="workspace-grid"><TraceTimeline trace={trace} selectedEventId={selectedEventId} onSelect={selectEvent} /><EventInspector event={selectedEvent} /></div>
-        <FailureSummary failures={failures} onSelect={selectEvent} />
+        <FailureSummary failures={failures} runStatus={trace.status} onSelect={selectEvent} />
         <details className="raw-trace panel"><summary>View complete trace JSON</summary><pre className="json-block">{JSON.stringify(trace.raw, null, 2)}</pre></details>
       </> : <section className="empty-state panel"><div className="empty-state-icon" aria-hidden="true">⌁</div><h2>Trace cleared</h2><p>Load a sample or import a local JSON trace to start inspecting.</p></section>}
     </main>

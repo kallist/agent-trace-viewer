@@ -59,10 +59,13 @@ function reject(session: LiveTraceSession, message: string, kind: LiveTraceWarni
   return addWarning(session, warning(kind, message), true);
 }
 
-function checkTransportId(session: LiveTraceSession, transportId: string | undefined): LiveTraceSession | null {
-  if (!transportId) return session;
-  if (session.seenTransportIds.includes(transportId)) return null;
-  return { ...session, seenTransportIds: [...session.seenTransportIds, transportId] };
+function checkTransportId(session: LiveTraceSession, message: LiveTraceMessage): LiveTraceSession | null {
+  if (!message.transportId) return session;
+  // EventSource inherits lastEventId when a subsequent message omits id:.
+  // Only an identical envelope with that ID proves duplicate delivery.
+  const identity = JSON.stringify(message);
+  if (session.seenTransportIds.includes(identity)) return null;
+  return { ...session, seenTransportIds: [...session.seenTransportIds, identity] };
 }
 
 function withRun(session: LiveTraceSession, runId: string, startedAt?: string, name?: string): LiveTraceSession {
@@ -83,7 +86,7 @@ export function reduceLiveTraceSession(session: LiveTraceSession, message: LiveT
     return reject(session, "Message received after the live session ended.");
   }
 
-  const transportChecked = checkTransportId(session, message.transportId);
+  const transportChecked = checkTransportId(session, message);
   if (!transportChecked) return reject(session, "Duplicate SSE message dropped.", "duplicate");
   let next = transportChecked;
 

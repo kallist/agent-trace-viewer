@@ -3,7 +3,7 @@ import type { LiveTransportMessage } from "./types";
 export interface LiveTraceHandlers {
   onOpen: () => void;
   onMessage: (message: LiveTransportMessage) => void;
-  onError: () => void;
+  onError: (error: { retrying: boolean }) => void;
 }
 
 export interface LiveTraceConnection {
@@ -60,7 +60,7 @@ export class EventSourceLiveTraceTransport implements LiveTraceTransport {
       });
     }
     source.onerror = () => {
-      if (!closed) handlers.onError();
+      if (!closed) handlers.onError({ retrying: source.readyState !== EventSource.CLOSED });
     };
     return {
       close: () => {

@@ -1,5 +1,21 @@
 import { test, expect } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import path from "node:path";
+
+const FIXTURE = "http://127.0.0.1:4174";
+
+async function connectControlled(page: Page, request: APIRequestContext, scenario: string, control: string) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Live", exact: true }).click();
+  await page.getByLabel("SSE endpoint").fill(`${FIXTURE}/sse/${scenario}?control=${control}`);
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(page.getByRole("status", { name: "Connection LIVE", exact: true })).toBeVisible();
+  return async (count = 1) => {
+    const response = await request.post(`${FIXTURE}/control/${control}?count=${count}`);
+    expect(response.ok()).toBe(true);
+    return response.json();
+  };
+}
 
 test("successful trace flows from sample to tool inspector", async ({ page }) => {
   await page.goto("/");
@@ -38,46 +54,91 @@ test("uploading the fixture replaces the current trace", async ({ page }) => {
   await expect(page.getByRole("button", { name: /retrieval\.failed.*VectorStoreUnavailable/i })).toBeVisible();
 });
 
-test("live SSE success updates the timeline, metrics, inspector, and ends cleanly", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Live" }).click();
-  await page.getByLabel("SSE endpoint").fill("http://127.0.0.1:4174/sse/success");
-  await page.getByRole("button", { name: "Connect" }).click();
-  await expect(page.getByRole("status", { name: /LIVE/i })).toBeVisible();
+test("live SSE success updates the timeline, metrics, inspector, and ends cleanly", async ({ page, request }, testInfo) => {
+  const advance = await connectControlled(page, request, "success", `success-${testInfo.retry}`);
+  await advance();
   await expect(page.getByText("run_live_001", { exact: true })).toBeVisible();
+  await expect(page.locator(".timeline-event")).toHaveCount(0);
+  await advance();
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  await expect(page.locator(".metric-card").filter({ hasText: "Tool calls" }).locator("strong")).toHaveText("0");
+  await advance(6);
+  await expect(page.locator(".timeline-event")).toHaveCount(7);
+  await expect(page.locator(".metric-card").filter({ hasText: "Tool calls" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".metric-card").filter({ hasText: "Tokens" }).locator("strong")).toHaveText("1,380");
   await expect(page.getByRole("button", { name: /tool\.completed/i })).toBeVisible();
   await page.getByRole("button", { name: /tool\.completed/i }).click();
   await expect(page.getByRole("heading", { name: "tool.completed" })).toBeVisible();
   await expect(page.getByText("calculator", { exact: true })).toBeVisible();
   await expect(page.getByText("5192", { exact: true })).toBeVisible();
+  await advance(3);
   await expect(page.getByRole("status", { name: /ENDED/i })).toBeVisible();
+  await expect(page.locator(".timeline-event")).toHaveCount(9);
+  await expect(page.getByRole("heading", { name: "tool.completed" })).toBeVisible();
+  await expect(page.locator(".run-status")).toHaveText("✓Completed");
+  await expect.poll(async () => (await request.get(`${FIXTURE}/control/success-${testInfo.retry}`)).json().then((state) => state.closed)).toBe(true);
 });
 
-test("malformed live data warns without stopping later events", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("SSE endpoint").fill("http://127.0.0.1:4174/sse/malformed");
-  await page.getByRole("button", { name: "Connect" }).click();
+test("malformed live data warns without stopping later events", async ({ page, request }, testInfo) => {
+  const advance = await connectControlled(page, request, "malformed", `malformed-${testInfo.retry}`);
+  await advance(2);
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  await advance();
   await expect(page.getByRole("heading", { name: "Stream warnings" })).toBeVisible();
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  await advance();
   await expect(page.getByRole("button", { name: /tool\.completed/i })).toBeVisible();
+  await advance();
   await expect(page.getByRole("status", { name: /ENDED/i })).toBeVisible();
+  await expect(page.locator(".timeline-event")).toHaveCount(2);
 });
 
-test("duplicate live event IDs do not duplicate the timeline or tool metric", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("SSE endpoint").fill("http://127.0.0.1:4174/sse/duplicate");
-  await page.getByRole("button", { name: "Connect" }).click();
+test("duplicate live event IDs do not duplicate the timeline or tool metric", async ({ page, request }, testInfo) => {
+  const advance = await connectControlled(page, request, "duplicate", `duplicate-${testInfo.retry}`);
+  await advance(5);
+  await expect(page.getByRole("status", { name: /ENDED/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /tool\.completed/i })).toHaveCount(1);
-  await expect(page.locator(".metric-card").filter({ hasText: "Tool calls" })).toContainText("1");
-  await expect(page.getByRole("status", { name: /ENDED/i })).toBeVisible();
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  await expect(page.locator(".metric-card").filter({ hasText: "Tool calls" }).locator("strong")).toHaveText("1");
+  await expect(page.locator(".metric-card").filter({ hasText: /^Tools/ }).locator("strong")).toHaveText("12 ms");
+  await expect(page.getByRole("heading", { name: "Stream warnings" })).toBeVisible();
+  await expect(page.getByText("Duplicate SSE message dropped.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Duplicate event 'duplicate-event' dropped.", { exact: true })).toBeVisible();
 });
 
-test("disconnect stops a slow live stream and leaves the received trace visible", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("SSE endpoint").fill("http://127.0.0.1:4174/sse/slow");
-  await page.getByRole("button", { name: "Connect" }).click();
+test("disconnect stops a slow live stream and leaves the received trace visible", async ({ page, request }, testInfo) => {
+  const control = `disconnect-${testInfo.retry}`;
+  const advance = await connectControlled(page, request, "slow", control);
+  await advance(2);
   await expect(page.getByRole("button", { name: /run\.started/i })).toBeVisible();
-  await page.getByRole("button", { name: "Disconnect" }).click();
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  const before = await page.locator(".summary, .metrics-section, .timeline-list").allTextContents();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await expect(page.getByRole("status", { name: /DISCONNECTED/i })).toBeVisible();
-  await page.waitForTimeout(500);
+  await expect.poll(async () => (await request.get(`${FIXTURE}/control/${control}`)).json().then((state) => state.closed)).toBe(true);
+  const progressed = await advance(9);
+  expect(progressed.attempted).toBe(progressed.total);
+  expect(progressed.closed).toBe(true);
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  expect(await page.locator(".summary, .metrics-section, .timeline-list").allTextContents()).toEqual(before);
   await expect(page.getByRole("button", { name: /retrieval\.started/i })).toHaveCount(0);
+});
+
+test("inherited SSE IDs preserve unique events and terminal stream closure", async ({ page, request }, testInfo) => {
+  const advance = await connectControlled(page, request, "inherited-id", `inherited-${testInfo.retry}`);
+  await advance(3);
+  await expect(page.getByRole("status", { name: "Connection ENDED", exact: true })).toBeVisible();
+  await expect(page.locator(".timeline-event")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /tool\.completed/i })).toBeVisible();
+  await expect(page.locator(".metric-card").filter({ hasText: "Tool calls" }).locator("strong")).toHaveText("1");
+  await expect(page.getByRole("heading", { name: "Stream warnings" })).toHaveCount(0);
+});
+
+test("a permanently rejected endpoint reports disconnected rather than retrying", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("SSE endpoint").fill(`${FIXTURE}/sse/not-found`);
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(page.getByRole("status", { name: "Connection DISCONNECTED", exact: true })).toBeVisible();
+  await expect(page.getByText(/SSE connection closed; check the endpoint/)).toBeVisible();
+  await expect(page.getByRole("status", { name: "Connection RECONNECTING", exact: true })).toHaveCount(0);
 });

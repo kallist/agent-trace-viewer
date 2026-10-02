@@ -68,10 +68,16 @@ export default function useLiveTrace(transport: LiveTraceTransport = defaultTran
             closeConnection();
           }
         },
-        onError: () => {
+        onError: ({ retrying }) => {
           if (generation !== generationRef.current) return;
           const current = sessionRef.current;
           if (current.phase === "ended" || current.phase === "disconnected") return;
+          if (!retrying) {
+            generationRef.current += 1;
+            closeConnection();
+            commit(recordLiveWarning({ ...current, phase: "disconnected" }, { kind: "connection", message: "SSE connection closed; check the endpoint and CORS, then connect again." }, false));
+            return;
+          }
           const next = current.phase === "reconnecting"
             ? { ...current, phase: "reconnecting" as const }
             : recordLiveWarning({ ...current, phase: "reconnecting" }, { kind: "connection", message: "SSE connection lost; waiting for EventSource to reconnect." }, false);

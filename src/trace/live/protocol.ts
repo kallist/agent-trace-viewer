@@ -1,4 +1,5 @@
 import type {
+  LiveMessageErrorCode,
   LiveMessageParseResult,
   LiveRawEvent,
   LiveTransportMessage,
@@ -14,11 +15,13 @@ function validTimestamp(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "" && Number.isFinite(Date.parse(value));
 }
 
-function error(code: Parameters<Extract<LiveMessageParseResult, { ok: false }>["error"]>["code"], message: string): LiveMessageParseResult {
+type LiveParseFailure = Extract<LiveMessageParseResult, { ok: false }>;
+
+function error(code: LiveMessageErrorCode, message: string): LiveParseFailure {
   return { ok: false, error: { code, message } };
 }
 
-function parseData(data: string): LiveMessageParseResult | { ok: true; value: RawRecord } {
+function parseData(data: string): LiveParseFailure | { ok: true; value: RawRecord } {
   let value: unknown;
   try {
     value = JSON.parse(data);
